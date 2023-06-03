@@ -121,6 +121,6 @@ dmypy.json
 data/
 data
 tmp
-
+.vscode
 # custom
 mmrotate/.mim
