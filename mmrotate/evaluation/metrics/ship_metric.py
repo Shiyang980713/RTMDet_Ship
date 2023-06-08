@@ -9,7 +9,7 @@ from collections import OrderedDict, defaultdict
 from typing import List, Optional, Sequence, Union
 import json
 import csv
-
+from tqdm import tqdm
 import numpy as np
 import torch
 from mmcv.ops import nms_quadri, nms_rotated
@@ -76,6 +76,7 @@ class ShipMetric(BaseMetric):
                  predict_box_type: str = 'rbox',
                  format_only: bool = False,
                  outfile_prefix: Optional[str] = None,
+                 merge_patches: bool = False,
                  iou_thr: float = 0.1,
                  eval_mode: str = '11points',
                  collect_device: str = 'cpu',
@@ -102,12 +103,78 @@ class ShipMetric(BaseMetric):
             'be saved to a temp directory which will be cleaned up at the end.'
 
         self.outfile_prefix = outfile_prefix
+        self.merge_patches = merge_patches
         self.iou_thr = iou_thr
 
         self.use_07_metric = True if eval_mode == '11points' else False
         self.id2category = {i: c
                         for i, c in enumerate(ShipDataset.METAINFO['classes'])
                     }
+        
+    def merge_results(self, results: Sequence[dict],
+                      outfile_prefix: str) -> str:
+        """Merge patches' predictions into full image's results and generate a
+        zip file for DOTA online evaluation.
+
+        You can submit it at:
+        https://captain-whu.github.io/DOTA/evaluation.html
+
+        Args:
+            results (Sequence[dict]): Testing results of the
+                dataset.
+            outfile_prefix (str): The filename prefix of the zip files. If the
+                prefix is "somepath/xxx", the zip files will be named
+                "somepath/xxx/xxx.zip".
+        """
+        collector = defaultdict(list)
+
+        for idx, result in enumerate(results):
+            img_id = result.get('img_id', idx)
+            splitname = img_id.split('__')
+            oriname = splitname[0]
+            pattern1 = re.compile(r'__\d+___\d+')
+            x_y = re.findall(pattern1, img_id)
+            x_y_2 = re.findall(r'\d+', x_y[0])
+            x, y = int(x_y_2[0]), int(x_y_2[1])
+            labels = result['labels']
+            bboxes = result['bboxes']
+            scores = result['scores']
+            ori_bboxes = bboxes.copy()
+            ori_bboxes[..., :] = ori_bboxes[..., :] + np.array(
+                [x, y, x, y, x, y, x, y], dtype=np.float32)
+            label_dets = np.concatenate(
+                [labels[:, np.newaxis], ori_bboxes, scores[:, np.newaxis]],
+                axis=1)
+            collector[oriname].append(label_dets)
+
+        big_img_json_results_list = []
+        for oriname, label_dets_list in collector.items():
+            label_dets = np.concatenate(label_dets_list, axis=0)
+            labels, dets = label_dets[:, 0], label_dets[:, 1:]
+            for i in range(len(self.dataset_meta['classes'])):
+                if len(dets[labels == i]) == 0:
+                    continue
+                else:
+                    try:
+                        cls_dets = torch.from_numpy(dets[labels == i]).cuda()
+                    except:  # noqa: E722
+                        cls_dets = torch.from_numpy(dets[labels == i])
+                    nms_dets, _ = nms_quadri(cls_dets[:, :8], 
+                                             cls_dets[:, -1], 
+                                             self.iou_thr)
+                    nms_dets = nms_dets.cpu().numpy().tolist()
+                    for nms_det in nms_dets:
+                        big_img_json_results = dict()
+                        big_img_json_results['image_id']=oriname
+                        big_img_json_results['bbox']=nms_det[:8]
+                        big_img_json_results['score'] = float(nms_det[-1])
+                        big_img_json_results['category_id'] = int(i)
+                        big_img_json_results_list.append(big_img_json_results)
+                        
+        result_files = dict()
+        result_files['bbox'] = f'{outfile_prefix}.bbox.json'
+        dump(big_img_json_results_list, result_files['bbox'])
+        return result_files
 
     def results2json(self, results: Sequence[dict],
                      outfile_prefix: str) -> dict:
@@ -184,7 +251,7 @@ class ShipMetric(BaseMetric):
             data_samples (Sequence[dict]): A batch of data samples that
                 contain annotations and predictions.
         """
-        for data_sample in data_samples:
+        for data_sample in tqdm(data_samples):
             gt = copy.deepcopy(data_sample)
             gt_instances = gt['gt_instances']
             gt_ignore_instances = gt['ignored_instances']
@@ -236,10 +303,13 @@ class ShipMetric(BaseMetric):
             outfile_prefix = self.outfile_prefix
             
         eval_results = OrderedDict()
-        # convert predictions to coco format and dump to json file
-        _ = self.results2json(preds, outfile_prefix)
+        if self.merge_patches:
+            _ = self.merge_results(preds, outfile_prefix)
+        else:
+            # convert predictions to coco format and dump to json file
+            _ = self.results2json(preds, outfile_prefix)
         self.json2csv(outfile_prefix, f'{outfile_prefix}.bbox.json')
-        
+            
         if self.format_only:
             logger.info('results are saved in '
                         f'{osp.dirname(outfile_prefix)}')

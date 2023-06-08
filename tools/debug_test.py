@@ -124,10 +124,10 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.argv = ['debug_train.py',
-        '/remote-home/syfeng/MyProject/mmrotate/configs/rotated_rtmdet/rotated_rtmdet_l-3x-ship.py',
-        '/remote-home/syfeng/MyProject/mmrotate/work_dirs/rotated_rtmdet_l-3x-ship/epoch_36.pth',
-        '--cfg-options',
-        '--work-dir','work_dirs_debug',
+    sys.argv = ['debug_test.py',
+        '/remote-home/syfeng/MyProject/mmrotate/configs/rotated_rtmdet/rotated_rtmdet_l-coco_pretrain-3x-ship_ms.py',
+        '/remote-home/syfeng/MyProject/mmrotate/work_dirs/rotated_rtmdet_l-coco_pretrain-3x-ship_ms/epoch_32.pth',
+        '--work-dir','work_dirs_debug/debug_ms',
+        '--out','work_dirs_debug/debug_ms/out.pkl',
     ]
     main()

@@ -118,7 +118,7 @@ dmypy.json
 .DS_Store
 .idea
 *work_dirs*
-data/
+!/tools/data/ship
 data
 tmp
 .vscode
