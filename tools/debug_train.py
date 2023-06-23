@@ -120,7 +120,10 @@ def main():
 
 if __name__ == '__main__':
     sys.argv = ['debug_train.py',
-        '/remote-home/syfeng/MyProject/mmrotate/configs/rotated_rtmdet/rotated_rtmdet_l-3x-ship.py',
+        # '/remote-home/syfeng/MyProject/ship_det/RTMDet_Ship/configs/rotated_rtmdet/rotated_rtmdet_l-3x-ship.py',
+        # '/remote-home/syfeng/MyProject/ship_det/RTMDet_Ship/configs/rotated_rtmdet/rotated_rtmdet_lsk-3x-ship.py',
+        # '/remote-home/syfeng/MyProject/ship_det/RTMDet_Ship/configs/rotated_rtmdet/rotated_rtmdet_lsk_pre-3x-ship.py',
+        '/remote-home/syfeng/MyProject/ship_det/RTMDet_Ship/configs/rotated_rtmdet/rotated_rtmdet_lsk_pre_fpn-3x-ship.py',
         '--cfg-options',
         'train_dataloader.batch_size=1',
         '--work-dir','work_dirs_debug',
