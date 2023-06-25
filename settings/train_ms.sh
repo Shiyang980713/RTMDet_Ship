@@ -2,7 +2,7 @@
 
 GPU_IDs=0,1
 # CONFIG_FILE='/remote-home/syfeng/MyProject/mmrotate/configs/rotated_rtmdet/rotated_rtmdet_l-3x-ship.py'
-CONFIG_FILE='/remote-home/syfeng/MyProject/mmrotate/configs/rotated_rtmdet/rotated_rtmdet_l-coco_pretrain-3x-ship_ms.py'
+CONFIG_FILE='/remote-home/syfeng/MyProject/ship_det/RTMDet_Ship/configs/rotated_rtmdet/rotated_rtmdet_lsk_pre_fpn-coco_pretrain-3x-ship_ms.py'
 
 NUM_GPUS=${#GPU_IDs//,/}
 #dist train shell
